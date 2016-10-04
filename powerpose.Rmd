@@ -17,11 +17,20 @@ knitr::opts_chunk$set(echo = TRUE, comment = "#>", collapse = TRUE, tidy = TRUE)
 ## cleaned data
 datc<-read.csv("ccy-clean-data.csv",header=TRUE)
 
+# two alternate factor codings for gender
+datc$gender_female <- datc$female
+datc$gender_male <- relevel(datc$gender_female, "Male")
+
+# testosterone diff
+datc$test_diff <- datc$testm2 - datc$testm1
+
 ## sanity check: one subject, one row
 dim(datc)
 length(unique(datc$id))
 
-#drop ineligible and something else as in stata code:
+# drop ineligible and something else as in stata code:
+unique(datc$inelig)
+unique(datc$anyoutv1)
 datc<-subset(datc,inelig!="Ineligible (drop)" & anyoutv1!="Selected")
 ```
 
@@ -44,8 +53,12 @@ summary(females$testm2)
 ## Calculate mean post-treatment testosterone by gender
 
 ```{r}
-round(with(datc,tapply(testm2,IND=list(female,hptreat),mean)))
-round(with(datc,tapply(testm2,IND=list(hptreat),mean)))
+# mean and 95% CI, rounded to 1 digit
+mean_se1 <- function(...) round(Hmisc::smean.cl.normal(...), 1)
+
+aggregate(testm2 ~ gender_female + hptreat, datc, mean_se1)
+
+aggregate(testm2 ~ hptreat, datc, mean_se1)
 ```
 
 By how much did testosterone increase after treatment? Means by gender.
@@ -53,12 +66,16 @@ By how much did testosterone increase after treatment? Means by gender.
 ```{r}
 ## difference scores:
 round(with(datc,tapply(testm2-testm1,IND=list(female,hptreat),mean)))
+
+aggregate(test_diff ~ hptreat + gender_female, datc, mean_se1)
 ```
 
 Means ignoring gender: here is the rough and ready version of fig 3 of the paper.
 The effects are a bit smaller in this data-set than the published result, probably because of the statistician's cleaning up of the data.
 
-```{r}
+```{r barplot}
+aggregate(test_diff ~ hptreat, datc, mean_se1)
+
 (means<-round(with(datc,tapply(testm2-testm1,IND=hptreat,mean))))
 (sds<-with(datc,tapply(testm2-testm1,IND=hptreat,sd)))
 n<-length(datc$testm2)
@@ -71,7 +88,7 @@ arrows(x0=1.9,x1=1.9,y0=means[2]-1.96*ses[2],y1=means[2]+1.96*ses[2],angle=90,co
 
 One could do a two-sample t-test as shown below. Note the high variability in the change in testosterone in low and high pose subjects. There were many cases where testosterone went down post high-power power. 
 
-```{r}
+```{r boxplot}
 ## calculate difference
 diff<-datc$testm2-datc$testm1
 ## make data frame with differences as DV:
@@ -92,6 +109,7 @@ t.test(lowdiff$diff,highdiff$diff)
 
 The bummer here is that there is actually no evidence of power posing. 
 Cuddy's Ted talk was based on a lie about the data.
+
 
 ## Analyze testosterone using linear models
 
@@ -140,3 +158,62 @@ So, the linear model also shows no effect of power posing on change in testoster
 ## Summary
 
 Both the t-test and the likelihood ratio test show that there is *no* evidence in the Cuddy data for power posing raising testosterone. Cuddy's Ted talk was based on a fictional claim.
+
+
+
+
+
+*** 
+
+Just some other explorations, not originally done by Shravan.
+
+```{r, tidy = FALSE}
+# re-express t-test using a linear model
+summary(lm(test_diff ~ hptreat, datc))
+
+# look at gender effects
+summary(lm(test_diff ~ hptreat * gender_female, datc))
+summary(lm(test_diff ~ hptreat * gender_male, datc))
+```
+
+```{r line-plots, tidy = FALSE}
+# Just doing other explorations
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Convert to long format
+df_long <- datc %>% 
+  select(id, gender_male, hptreat, 
+         test_1 = testm1, test_2 = testm2, 
+         cort_1 = cortm1, cort_2 = cortm2) %>% 
+  gather(measure, value, test_1:cort_2) %>% 
+  separate(measure, into = c("measure", "time"))
+
+# mean + 95% ci per time per facet
+ggplot(df_long %>% filter(measure == "test")) + 
+  aes(x = time, y = value) + 
+  geom_line(aes(group = id)) + 
+  facet_grid(gender_male ~ hptreat) + 
+  stat_summary(fun.data = mean_cl_normal, 
+               fun.args = list(conf.int = .95), 
+               color = "red")
+
+ggplot(df_long %>% filter(measure == "test")) + 
+  aes(x = time, y = value) + 
+  geom_line(aes(group = id)) + 
+  facet_grid(. ~ hptreat) + 
+  stat_summary(fun.data = mean_cl_normal, 
+               fun.args = list(conf.int = .95), 
+               color = "red")
+
+library(lme4)
+df_test <- df_long %>% 
+  filter(measure == "test") %>% 
+  mutate(time_cent = ifelse(time == 1, -.5, .5), 
+         time2 = ifelse(time == 1, 0, 1))
+
+# random intercept model
+summary(lmer(value ~ time2 * hptreat + (1 | id), df_test))
+```
+
