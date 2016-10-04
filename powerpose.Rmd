@@ -11,7 +11,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE, comment = "#>", collapse = TRUE, tidy = TRUE)
 ```
 
-# Load and prepare data
+## Load and prepare data
 
 ```{r}
 ## cleaned data
@@ -25,7 +25,7 @@ length(unique(datc$id))
 datc<-subset(datc,inelig!="Ineligible (drop)" & anyoutv1!="Selected")
 ```
 
-# Examine male and female testosterone levels
+## Examine male and female testosterone levels
 
 ```{r}
 ## subset males and females
@@ -41,7 +41,7 @@ summary(males$testm2)
 summary(females$testm2)
 ```
 
-# Calculate mean post-treatment testosterone by gender
+## Calculate mean post-treatment testosterone by gender
 
 ```{r}
 round(with(datc,tapply(testm2,IND=list(female,hptreat),mean)))
@@ -93,7 +93,7 @@ t.test(lowdiff$diff,highdiff$diff)
 The bummer here is that there is actually no evidence of power posing. 
 Cuddy's Ted talk was based on a lie about the data.
 
-# Analyze testosterone using linear models
+## Analyze testosterone using linear models
 
 Now, we will refit the model using various predictors: the initial 
 testosterone value, the initial and final cortisone (?) levels, and 
@@ -123,7 +123,7 @@ anova(m1,m1a)
 
 There seems to be no evidence here either that power posing increases testosterone.
 
-# Analyzing the data using change in testosterone
+## Analyzing the data using change in testosterone
 
 We could also have as dependent measure the change in testosterone in low vs high power subjects. This corresponds to the Fig 3 plot in the paper.
 
@@ -137,6 +137,6 @@ anova(m2,m2a) ## no effect
 
 So, the linear model also shows no effect of power posing on change in testosterone.
 
-# Summary
+## Summary
 
 Both the t-test and the likelihood ratio test show that there is *no* evidence in the Cuddy data for power posing raising testosterone. Cuddy's Ted talk was based on a fictional claim.
