@@ -2,7 +2,9 @@
 title: "Analysis of power pose data"
 author: "Shravan Vasishth"
 date: "1 October 2016"
-output: html_document
+output:
+  github_document: null
+  html_document: null
 ---
 
 ```{r setup, include=FALSE}
